@@ -11,10 +11,6 @@ set(GLEW_LIBRARY "" CACHE FILEPATH "The path to glew32s.lib")
 
 set(GLM_INCLUDE_PATH "" CACHE PATH "The directory that contains glm/glm.hpp")
 
-set(APP_HEADER_FILES)
-
-set(APP_SOURCE_FILES ./src/main.cpp)
-
 include_directories(
     ${GLFW_INCLUDE_PATH}
     ${GLEW_INCLUDE_PATH}
@@ -23,5 +19,3 @@ include_directories(
 
 add_executable(dshop ./src/main.cpp)
 target_link_libraries(dshop ${OPENGL_LIBRARY} ${GLFW_LIBRARY} ${GLEW_LIBRARY})
-
-
