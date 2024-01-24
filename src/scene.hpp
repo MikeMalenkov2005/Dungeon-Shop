@@ -15,4 +15,12 @@ class Scene {
     virtual void OnMouseMove(GLFWwindow* window, double x, double y) {}
 };
 
+inline Scene* GetScene(GLFWwindow* window) {
+    return (Scene*) glfwGetWindowUserPointer(window);
+}
+
+inline void SetScene(GLFWwindow* window, Scene* scene) {
+    glfwSetWindowUserPointer(window, scene);
+}
+
 #endif

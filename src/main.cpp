@@ -1,6 +1,6 @@
-#include "framework.hpp"
+#include "resources.hpp"
 
-#include "scene.hpp"
+#define OPT(obj, def) (obj ? obj : def)
 
 void ErrorCallback(int error, const char* description);
 void FramebufferSizeCallback(GLFWwindow* window, int width, int height);
@@ -21,7 +21,9 @@ static struct {
     GLFWmonitor* monitor;
 } window_state;
 
-int main() {
+static const Resources* resources = NULL;
+
+int main(int argc, char **argv) {
     if (!glfwInit()) {
         fprintf(stderr, "Error: Failed to initialize GLFW!\n");
         return 1;
@@ -43,7 +45,7 @@ int main() {
 
     GLenum err = glewInit();
     if (err != GLEW_OK) {
-        fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
+        std::cerr << "Error: " << glewGetErrorString(err) << std::endl;
         glfwDestroyWindow(window);
         return 1;
     }
@@ -60,9 +62,22 @@ int main() {
 
     glClearColor(0, 0, 0, 1);
 
+    auto inner_exe_dir = std::filesystem::weakly_canonical(std::filesystem::path(argv[0])).parent_path();
+    auto outer_exe_dir = inner_exe_dir.parent_path();
+    auto res_dir = inner_exe_dir / "res";
+    if (!std::filesystem::exists(res_dir)) res_dir = outer_exe_dir / "res";
+    if (!std::filesystem::exists(res_dir)) {
+        std::cerr << "Error: Failed to locate the resources directory!" << std::endl;
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return 1;
+    }
+    resources = new Resources(res_dir);
+    SetScene(window, resources->scenes.title_screen);
+
     clock_t t = clock();
     while (!glfwWindowShouldClose(window)) {
-        Scene* scene = (Scene*) glfwGetWindowUserPointer(window);
+        Scene* scene = GetScene(window);
         glClear(GL_COLOR_BUFFER_BIT);
         glfwSwapBuffers(window);
         if (scene) scene->Render();
@@ -72,9 +87,7 @@ int main() {
         glfwPollEvents();
     }
 
-    Scene* scene = (Scene*) glfwGetWindowUserPointer(window);
-    glfwSetWindowUserPointer(window, NULL);
-    if (scene) delete scene;
+    delete resources;
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;
@@ -91,8 +104,8 @@ void FramebufferSizeCallback(GLFWwindow* window, int width, int height) {
 }
 
 void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    Scene* scene = (Scene*) glfwGetWindowUserPointer(window);
-    if (action == GLFW_REPEAT && key == GLFW_KEY_F11) {
+    Scene* scene = GetScene(window);
+    if (action && key == GLFW_KEY_F11) {
         ToggleFullscreen(window);
     } else if (scene) {
         switch (action) {
@@ -110,22 +123,22 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 }
 
 void CharCallback(GLFWwindow* window, unsigned int codepoint) {
-    Scene* scene = (Scene*) glfwGetWindowUserPointer(window);
+    Scene* scene = GetScene(window);
     if (scene) scene->OnCharPrint(window, codepoint);
 }
 
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
-    Scene* scene = (Scene*) glfwGetWindowUserPointer(window);
+    Scene* scene = GetScene(window);
     if (scene) scene->OnMouseScroll(window, xoffset, yoffset);
 }
 
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos) {
-    Scene* scene = (Scene*) glfwGetWindowUserPointer(window);
+    Scene* scene = GetScene(window);
     if (scene) scene->OnMouseMove(window, xpos, ypos);
 }
 
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
-    Scene* scene = (Scene*) glfwGetWindowUserPointer(window);
+    Scene* scene = GetScene(window);
     if (scene) {
         switch (action) {
         case GLFW_RELEASE:
@@ -146,11 +159,17 @@ void ToggleFullscreen(GLFWwindow* window) {
         glfwSetWindowMonitor(window, NULL, window_state.xpos, window_state.ypos, window_state.w_width, window_state.w_height, GLFW_DONT_CARE);
     } else {
         if (!window_state.monitor) window_state.monitor = glfwGetPrimaryMonitor();
+        glfwGetWindowPos(window, &window_state.xpos, &window_state.ypos);
+        glfwGetWindowSize(window, &window_state.w_width, &window_state.w_height);
         const GLFWvidmode* vidmode = glfwGetVideoMode(window_state.monitor);
-        glfwSetWindowMonitor(window, window_state.monitor, 0, 0, window_state.f_width ? window_state.f_width : vidmode->width, window_state.f_height ? window_state.f_height : vidmode->height, window_state.refreshRate ? window_state.refreshRate : vidmode->refreshRate);
+        glfwSetWindowMonitor(window, window_state.monitor, 0, 0, OPT(window_state.f_width, vidmode->width), OPT(window_state.f_height, vidmode->height), OPT(window_state.refreshRate, vidmode->refreshRate));
     }
 }
 
 bool IsFullscreen(GLFWwindow* window) {
     return glfwGetWindowMonitor(window) != NULL;
+}
+
+const Resources* GetGlobalResources() {
+    return resources;
 }

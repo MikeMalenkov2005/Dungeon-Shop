@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 3.8)
 project(Dungeon-Shop)
 
 find_package(OpenGL REQUIRED)
@@ -17,5 +17,9 @@ include_directories(
     ${GLM_INCLUDE_PATH}
 )
 
-add_executable(dshop ./src/main.cpp)
+file(GLOB SRC_FILES "./src/*.cpp")
+
+add_executable(dshop ${SRC_FILES})
+set_property(TARGET dshop PROPERTY CXX_STANDARD 17)
 target_link_libraries(dshop ${OPENGL_LIBRARY} ${GLFW_LIBRARY} ${GLEW_LIBRARY})
+add_custom_command(TARGET dshop POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/res ${CMAKE_CURRENT_BINARY_DIR}/res)
